@@ -1,0 +1,39 @@
+name: Build and Push to ECR
+
+on:
+  push:
+    branches:
+      - main # Déclenche le workflow à chaque push sur la branche 'main'
+
+env:
+  AWS_REGION: us-east-1 # Remplace par ta région AWS (ex: us-east-1, eu-central-1)
+  ECR_REPOSITORY: devops-test-app # Le nom de ton dépôt ECR
+  IMAGE_TAG: ${{ github.sha }} # Utilise le SHA du commit comme tag de l'image
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest # Utilise une machine virtuelle Ubuntu pour exécuter le job
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4 # Récupère le code de ton dépôt GitHub
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4 # Configure les identifiants AWS
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Utilise le secret GitHub
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Utilise le secret GitHub
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2 # Se connecte à ECR
+
+    - name: Build, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }} # Récupère l'URI du registre ECR
+      run: |
+        # Construit l'image Docker avec le tag complet (ECR URI + nom du dépôt + tag)
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        # Pousse l'image vers ECR
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
