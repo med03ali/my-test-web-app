@@ -63,7 +63,7 @@ jobs:
         apiVersion: v1
         clusters:
         - cluster:
-            certificate-authority: ~/.kube/ca.crt
+            certificate-authority: ca.crt
             server: ${{ secrets.KUBE_CONFIG_SERVER_URL }} # Your Cloudflare Tunnel URL
           name: k3s-cluster
         contexts:
