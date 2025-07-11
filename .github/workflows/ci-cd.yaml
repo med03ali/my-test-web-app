@@ -57,7 +57,7 @@ jobs:
     - name: Set up Kubeconfig
       run: |
         mkdir -p ~/.kube
-        echo "${{ secrets.KUBE_CONFIG_CA_CERT }}" > ~/.kube/ca.crt # Write CA cert from GitHub Secret
+        echo "${{ secrets.KUBE_CONFIG_CA_CERT }}" > ca.crt # Write CA cert from GitHub Secret
         KUBECFG_FILE=~/.kube/config
         cat <<EOF >$KUBECFG_FILE
         apiVersion: v1
