@@ -43,7 +43,7 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_SHA_TAG
         echo "image_tag=$IMAGE_SHA_TAG" >> "$GITHUB_OUTPUT" # Output the tag for other jobs
 
-  ---
+
 
   deploy:
     runs-on: ubuntu-latest
