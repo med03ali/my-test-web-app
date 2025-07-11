@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-web-app-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  ingressClassName: nginx # Assure-toi que c'est bien "nginx"
+  rules:
+  - host: myapp.local # Un nouveau nom de domaine fictif pour ton app
+    http:
+      paths:
+      - path: / # Capture tout le chemin
+        pathType: Prefix
+        backend:
+          service:
+            name: my-web-app-service # Nom du service que tu viens de créer
+            port:
+              number: 80

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-web-app-service
+spec:
+  selector:
+    app: my-web-app # Doit correspondre au label 'app' dans ton Deployment
+  ports:
+    - protocol: TCP
+      port: 80 # Le port sur lequel ce service écoutera
+      targetPort: 80 # Le port du conteneur (défini dans le Dockerfile)
+  type: ClusterIP # Type de service : accessible uniquement à l'intérieur du cluster

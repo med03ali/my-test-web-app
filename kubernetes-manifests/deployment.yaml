@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-web-app-deployment
+  labels:
+    app: my-web-app
+spec:
+  replicas: 1 # Un seul pod pour commencer
+  selector:
+    matchLabels:
+      app: my-web-app
+  template:
+    metadata:
+      labels:
+        app: my-web-app
+    spec:
+      containers:
+      - name: devops-test-app
+        # IMPORTANT : Remplace par l'URI de ton dépôt ECR et le tag de l'image
+        # Utilise 'latest' pour le moment, tu verras comment le changer dynamiquement plus tard
+        image: 343218191685.dkr.ecr.us-east-1.amazonaws.com/devops-test-app:latest
+        ports:
+        - containerPort: 80 # Le port que ton Nginx expose dans le Dockerfile
+      imagePullSecrets: # <-- AJOUTE CETTE LIGNE
+      - name: ecr-cred-secret
