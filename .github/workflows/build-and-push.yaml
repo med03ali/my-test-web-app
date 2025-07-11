@@ -8,7 +8,7 @@ on:
 env:
   AWS_REGION: us-east-1 # Remplace par ta région AWS (ex: us-east-1, eu-central-1)
   ECR_REPOSITORY: devops-test-app # Le nom de ton dépôt ECR
-  IMAGE_TAG: ${{ github.sha }} # Utilise le SHA du commit comme tag de l'image
+  IMAGE_TAG: latest # Utilise le SHA du commit comme tag de l'image
 
 jobs:
   build-and-push:
