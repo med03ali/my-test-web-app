@@ -95,4 +95,3 @@ jobs:
     - name: Deploy to Kubernetes
       run: |
         kubectl apply -f kubernetes-manifests/ # Apply all manifests in the folder
-
