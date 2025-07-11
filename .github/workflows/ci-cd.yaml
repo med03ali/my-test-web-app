@@ -1,0 +1,98 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main # Triggers the workflow on pushes to the 'main' branch
+
+env:
+  AWS_REGION: us-east-1 # Replace with your actual AWS region (e.g., eu-west-1)
+  ECR_REPOSITORY: devops-test-app # The name of your ECR repository
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest # Uses an Ubuntu virtual machine to run the job
+    outputs:
+      image_tag: ${{ steps.build-push.outputs.image_tag }} # Make the image_tag available to other jobs
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4 # Retrieves your code from GitHub repository
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4 # Configures AWS credentials
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }} # Uses GitHub secret
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }} # Uses GitHub secret
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2 # Logs into ECR
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-push # Added an ID to this step to capture its output
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }} # Retrieves ECR registry URI
+        IMAGE_SHA_TAG: ${{ github.sha }} # Use the commit SHA as the image tag
+      run: |
+        echo "Building and pushing image with tag: $IMAGE_SHA_TAG"
+        # Builds the Docker image with the full tag (ECR URI + repo name + SHA tag)
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_SHA_TAG .
+        # Pushes the image to ECR
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_SHA_TAG
+        echo "image_tag=$IMAGE_SHA_TAG" >> "$GITHUB_OUTPUT" # Output the tag for other jobs
+
+
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push # This job will only run after 'build-and-push' completes successfully
+    environment: production # Good practice to define an environment for deployments
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Kubeconfig
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBE_CONFIG_CA_CERT }}" > ~/.kube/ca.crt # Write CA cert from GitHub Secret
+        KUBECFG_FILE=~/.kube/config
+        cat <<EOF >$KUBECFG_FILE
+        apiVersion: v1
+        clusters:
+        - cluster:
+            certificate-authority: ~/.kube/ca.crt
+            server: ${{ secrets.KUBE_CONFIG_SERVER_URL }} # Your Cloudflare Tunnel URL
+          name: k3s-cluster
+        contexts:
+        - context:
+            cluster: k3s-cluster
+            user: github-actions-sa
+          name: k3s-cluster
+        current-context: k3s-cluster
+        kind: Config
+        preferences: {}
+        users:
+        - name: github-actions-sa
+          user:
+            token: ${{ secrets.KUBE_CONFIG_TOKEN }} # Your Service Account token
+        EOF
+        chmod 600 $KUBECFG_FILE # Protect the kubeconfig file
+
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.27.12' # Use a kubectl version compatible with your K3s (e.g., v1.27.x or v1.28.x)
+
+    - name: Update image tag in Kubernetes manifests
+      run: |
+        # Replace the placeholder in your deployment.yaml with the actual image tag (SHA)
+        # Note: 's|' is used here to avoid issues if your path contains '/'
+        sed -i "s|IMAGE_TAG_PLACEHOLDER|${{ needs.build-and-push.outputs.image_tag }}|g" kubernetes-manifests/deployment.yaml
+
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f kubernetes-manifests/ # Apply all manifests in the folder
+
