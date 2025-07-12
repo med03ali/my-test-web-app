@@ -34,7 +34,7 @@ jobs:
       id: build-push # Added an ID to this step to capture its output
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }} # Retrieves ECR registry URI
-        IMAGE_SHA_TAG: ${{ github.sha }} # Use the commit SHA as the image tag
+        IMAGE_SHA_TAG: latest # Use the commit SHA as the image tag
       run: |
         echo "Building and pushing image with tag: $IMAGE_SHA_TAG"
         # Builds the Docker image with the full tag (ECR URI + repo name + SHA tag)
