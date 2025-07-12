@@ -56,7 +56,7 @@ jobs:
     - name: Checkout Kubernetes Manifests Repository
       uses: actions/checkout@v4
       with:
-        repository: ${{ env.MANIFESTS_REPO_URL }} # Le dépôt de manifestes
+        repository: med03ali/my-app-manifests # Le dépôt de manifestes
         path: ${{ env.MANIFESTS_REPO_PATH }} # Le chemin où le cloner
         token: ${{ secrets.GH_PAT_FOR_MANIFESTS }} # Utilisez le PAT pour les droits d'écriture
 
