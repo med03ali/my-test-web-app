@@ -34,7 +34,7 @@ jobs:
       id: build-push # Added an ID to this step to capture its output
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }} # Retrieves ECR registry URI
-        IMAGE_SHA_TAG: latest # Use the commit SHA as the image tag
+        IMAGE_SHA_TAG: ${{ github.sha }} # Use the commit SHA as the image tag
       run: |
         echo "Building and pushing image with tag: $IMAGE_SHA_TAG"
         # Builds the Docker image with the full tag (ECR URI + repo name + SHA tag)
@@ -44,4 +44,44 @@ jobs:
         echo "image_tag=$IMAGE_SHA_TAG" >> "$GITHUB_OUTPUT" # Output the tag for other jobs
 
 
+   update-manifests-and-deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push # Ce job dépend du succès du job 'build-and-push'
+    
+    env:
+      MANIFESTS_REPO_URL: https://github.com/med03ali/my-app-manifests.git 
+      MANIFESTS_REPO_PATH: my-app-manifests # Nom du dossier où le dépôt sera cloné
 
+    steps:
+    - name: Checkout Kubernetes Manifests Repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ env.MANIFESTS_REPO_URL }} # Le dépôt de manifestes
+        path: ${{ env.MANIFESTS_REPO_PATH }} # Le chemin où le cloner
+        token: ${{ secrets.GH_PAT_FOR_MANIFESTS }} # Utilisez le PAT pour les droits d'écriture
+
+    - name: Update image tag in deployment.yaml
+      run: |
+        # Navigue dans le répertoire du dépôt de manifestes cloné
+        cd ${{ env.MANIFESTS_REPO_PATH }}
+        # Remplace IMAGE_TAG_PLACEHOLDER par le tag réel de l'image (le SHA du commit)
+        # Assurez-vous que votre deployment.yaml contient bien "IMAGE_TAG_PLACEHOLDER"
+        sed -i "s|IMAGE_TAG_PLACEHOLDER|${{ needs.build-and-push.outputs.image_tag }}|g" deployment.yaml
+        echo "Updated deployment.yaml with image tag: ${{ needs.build-and-push.outputs.image_tag }}"
+
+    - name: Commit and Push Updated Manifests
+      run: |
+        cd ${{ env.MANIFESTS_REPO_PATH }}
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Ajoute le fichier modifié
+        git add deployment.yaml
+        
+        # Commit si des changements ont été détectés, sinon affiche un message
+        git commit -m "chore: Update devops-test-app image to ${{ needs.build-and-push.outputs.image_tag }}" || echo "No changes to commit"
+        
+        # Pousse les changements vers le dépôt de manifestes
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_PAT_FOR_MANIFESTS }} # Utilise le PAT pour l'authentification Git
